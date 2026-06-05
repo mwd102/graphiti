@@ -1,5 +1,16 @@
 """Exec-EA custom ontology extension points for Graphiti."""
 
+from graphiti_core.exec_ea.llm import (
+    DEFAULT_LITELLM_MODEL,
+    DEFAULT_LITELLM_SMALL_MODEL,
+    LITELLM_API_KEY_ENV_VARS,
+    LITELLM_BASE_URL_ENV_VARS,
+    LITELLM_MODEL_ENV_VARS,
+    LITELLM_SMALL_MODEL_ENV_VARS,
+    LiteLLMEnvironmentError,
+    litellm_client_from_env,
+    litellm_config_from_env,
+)
 from graphiti_core.exec_ea.matching import (
     MATCH_METADATA_KEYS,
     SeedMatch,
@@ -72,10 +83,16 @@ from graphiti_core.exec_ea.seeds import (
 __all__ = [
     'DEFAULT_OPENSEARCH_URL',
     'DEFAULT_SEED_MANIFEST',
+    'DEFAULT_LITELLM_MODEL',
+    'DEFAULT_LITELLM_SMALL_MODEL',
     'DETERMINISTIC_OBSERVATION_EXTRACTION_METHOD',
     'EDGE_TYPE_MAP',
     'EDGE_TYPES',
     'ENTITY_TYPES',
+    'LITELLM_API_KEY_ENV_VARS',
+    'LITELLM_BASE_URL_ENV_VARS',
+    'LITELLM_MODEL_ENV_VARS',
+    'LITELLM_SMALL_MODEL_ENV_VARS',
     'LLM_OBSERVATION_EXTRACTION_METHOD',
     'MATCH_METADATA_KEYS',
     'OBSERVATION_CUE_PATTERNS',
@@ -88,6 +105,7 @@ __all__ = [
     'ROLE_DISAMBIGUATION_SEED_EDGES_V1',
     'ROLE_DISAMBIGUATION_SEED_ENTITIES_V1',
     'SOURCE_KIND_BY_INDEX',
+    'LiteLLMEnvironmentError',
     'LLMExtractedObservation',
     'LLMObservationExtraction',
     'OpenSearchClient',
@@ -122,6 +140,8 @@ __all__ = [
     'import_csm_exec_observations',
     'import_csm_exec_observations_with_llm',
     'import_csm_exec_pilot',
+    'litellm_client_from_env',
+    'litellm_config_from_env',
     'match_source_record',
     'normalize_hit',
     'observation_extraction_messages',
