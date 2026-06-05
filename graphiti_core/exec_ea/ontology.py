@@ -494,6 +494,14 @@ class ProjectHasActionItem(ExecEAEdge):
     )
 
 
+class ProjectHasStatus(ExecEAEdge):
+    """A project has a dated status observation."""
+
+    status_scope: str | None = Field(
+        default=None, description='Delivery, risk, schedule, rollout, finance, or general status.'
+    )
+
+
 class ProjectHasRisk(ExecEAEdge):
     """A project has an identified risk or exposure."""
 
@@ -552,6 +560,14 @@ class MeetingSeriesHasOccurrence(ExecEAEdge):
 
     occurrence_status: str | None = Field(
         default=None, description='Scheduled, completed, cancelled, or unclear.'
+    )
+
+
+class MeetingSeriesHasCarryForward(ExecEAEdge):
+    """A meeting series has an unresolved item carried across occurrences."""
+
+    carry_status: str | None = Field(
+        default=None, description='Open, resolved, repeated, or unclear.'
     )
 
 
@@ -692,6 +708,7 @@ EDGE_TYPES: dict[str, type[BaseModel]] = {
     'PROJECT_HAS_VENDOR': ProjectHasVendor,
     'PROJECT_HAS_DECISION': ProjectHasDecision,
     'PROJECT_HAS_ACTION_ITEM': ProjectHasActionItem,
+    'PROJECT_HAS_STATUS': ProjectHasStatus,
     'PROJECT_HAS_RISK': ProjectHasRisk,
     'PROJECT_HAS_DEPENDENCY': ProjectHasDependency,
     'PROJECT_HAS_RENEWAL': ProjectHasRenewal,
@@ -700,6 +717,7 @@ EDGE_TYPES: dict[str, type[BaseModel]] = {
     'CHUNK_PART_OF_TRANSCRIPT': ChunkPartOfTranscript,
     'EMAIL_PART_OF_THREAD': EmailPartOfThread,
     'MEETING_SERIES_HAS_OCCURRENCE': MeetingSeriesHasOccurrence,
+    'MEETING_SERIES_HAS_CARRY_FORWARD': MeetingSeriesHasCarryForward,
     'OCCURRENCE_HAS_TRANSCRIPT': OccurrenceHasTranscript,
     'OCCURRENCE_HAS_CALENDAR_EVENT': OccurrenceHasCalendarEvent,
     'PERSON_OWNS_OBLIGATION': PersonOwnsObligation,
@@ -734,6 +752,7 @@ EDGE_TYPE_MAP: dict[tuple[str, str], list[str]] = {
     ('Project', 'Organization'): ['PROJECT_HAS_VENDOR'],
     ('Project', 'Decision'): ['PROJECT_HAS_DECISION'],
     ('Project', 'ActionItem'): ['PROJECT_HAS_ACTION_ITEM'],
+    ('Project', 'ProjectStatus'): ['PROJECT_HAS_STATUS'],
     ('Project', 'Risk'): ['PROJECT_HAS_RISK'],
     ('Project', 'Dependency'): ['PROJECT_HAS_DEPENDENCY'],
     ('Project', 'Renewal'): ['PROJECT_HAS_RENEWAL'],
@@ -742,6 +761,7 @@ EDGE_TYPE_MAP: dict[tuple[str, str], list[str]] = {
     ('Document', 'Document'): ['CHUNK_PART_OF_TRANSCRIPT', 'EMAIL_PART_OF_THREAD'],
     ('EmailThread', 'Document'): ['EMAIL_PART_OF_THREAD'],
     ('MeetingSeries', 'MeetingOccurrence'): ['MEETING_SERIES_HAS_OCCURRENCE'],
+    ('MeetingSeries', 'MeetingCarryForward'): ['MEETING_SERIES_HAS_CARRY_FORWARD'],
     ('MeetingOccurrence', 'Document'): [
         'OCCURRENCE_HAS_TRANSCRIPT',
         'OCCURRENCE_HAS_CALENDAR_EVENT',
