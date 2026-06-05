@@ -50,6 +50,35 @@ from graphiti_core.utils.datetime_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
+EPISODE_METADATA_PROPERTY_PREFIX = 'episode_metadata.'
+
+
+def serialize_episode_metadata(episode_metadata: dict[str, Any] | None) -> str | None:
+    return json.dumps(episode_metadata, default=str) if episode_metadata is not None else None
+
+
+def deserialize_episode_metadata(episode_metadata: Any) -> dict[str, Any] | None:
+    if episode_metadata is None:
+        return None
+    if isinstance(episode_metadata, dict):
+        return episode_metadata
+    if isinstance(episode_metadata, str):
+        return json.loads(episode_metadata)
+
+    raise TypeError(f'Invalid episode metadata value: {episode_metadata!r}')
+
+
+def episode_metadata_property_map(episode_metadata: dict[str, Any] | None) -> dict[str, Any]:
+    if episode_metadata is None:
+        return {}
+
+    metadata_properties: dict[str, Any] = {}
+    for key, value in episode_metadata.items():
+        if isinstance(value, str | int | float | bool):
+            metadata_properties[EPISODE_METADATA_PROPERTY_PREFIX + key] = value
+
+    return metadata_properties
+
 
 class EpisodeType(Enum):
     """
@@ -348,6 +377,8 @@ class EpisodicNode(Node):
             'created_at': self.created_at,
             'valid_at': self.valid_at,
             'source': self.source.value,
+            'episode_metadata': serialize_episode_metadata(self.episode_metadata),
+            'episode_metadata_properties': episode_metadata_property_map(self.episode_metadata),
         }
 
         result = await driver.execute_query(
@@ -1044,6 +1075,7 @@ def get_episodic_node_from_record(record: Any) -> EpisodicNode:
         name=record['name'],
         source_description=record['source_description'],
         entity_edges=record['entity_edges'],
+        episode_metadata=deserialize_episode_metadata(record.get('episode_metadata')),
     )
 
 

@@ -25,7 +25,9 @@ from graphiti_core.nodes import (
     EpisodeType,
     EpisodicNode,
 )
+from graphiti_core.utils.bulk_utils import add_nodes_and_edges_bulk
 from tests.helpers_test import (
+    GraphProvider,
     assert_community_node_equals,
     assert_entity_node_equals,
     assert_episodic_node_equals,
@@ -225,5 +227,106 @@ async def test_episodic_node(sample_episodic_node, graph_driver):
     await sample_episodic_node.delete_by_group_id(graph_driver, group_id)
     node_count = await get_node_count(graph_driver, [uuid])
     assert node_count == 0
+
+    await graph_driver.close()
+
+
+@pytest.mark.asyncio
+async def test_episodic_node_episode_metadata_round_trip(graph_driver):
+    if graph_driver.provider != GraphProvider.NEO4J:
+        pytest.skip('Episode metadata persistence is wired for Neo4j first')
+
+    episode = EpisodicNode(
+        uuid=str(uuid4()),
+        name='Episode with metadata',
+        group_id=group_id,
+        created_at=created_at,
+        source=EpisodeType.json,
+        source_description='OpenSearch email',
+        content='{"subject": "metadata test"}',
+        valid_at=valid_at,
+        entity_edges=[],
+        episode_metadata={
+            'source_system': 'opensearch',
+            'source_index': 'emails',
+            'source_kind': 'email',
+            'source_id': 'email-123',
+            'ingestion_run_id': 'run-456',
+            'project_matches': [{'project_id': 18, 'confidence': 0.91}],
+        },
+    )
+
+    await episode.save(graph_driver)
+
+    retrieved = await EpisodicNode.get_by_uuid(graph_driver, episode.uuid)
+    await assert_episodic_node_equals(retrieved, episode)
+
+    retrieved_by_uuids = await EpisodicNode.get_by_uuids(graph_driver, [episode.uuid])
+    await assert_episodic_node_equals(retrieved_by_uuids[0], episode)
+
+    retrieved_by_group = await EpisodicNode.get_by_group_ids(graph_driver, [group_id], limit=1)
+    await assert_episodic_node_equals(retrieved_by_group[0], episode)
+
+    await graph_driver.close()
+
+
+@pytest.mark.asyncio
+async def test_episodic_node_episode_metadata_bulk_round_trip(graph_driver, mock_embedder):
+    if graph_driver.provider != GraphProvider.NEO4J:
+        pytest.skip('Episode metadata persistence is wired for Neo4j first')
+
+    episodes = [
+        EpisodicNode(
+            uuid=str(uuid4()),
+            name='Bulk episode 1',
+            group_id=group_id,
+            created_at=created_at,
+            source=EpisodeType.text,
+            source_description='OpenSearch transcript chunk',
+            content='Bulk content 1',
+            valid_at=valid_at,
+            entity_edges=[],
+            episode_metadata={
+                'source_system': 'opensearch',
+                'source_index': 'chunks',
+                'source_kind': 'transcript_chunk',
+                'source_id': 'chunk-1',
+            },
+        ),
+        EpisodicNode(
+            uuid=str(uuid4()),
+            name='Bulk episode 2',
+            group_id=group_id,
+            created_at=created_at,
+            source=EpisodeType.text,
+            source_description='OpenSearch transcript chunk',
+            content='Bulk content 2',
+            valid_at=valid_at,
+            entity_edges=[],
+            episode_metadata={
+                'source_system': 'opensearch',
+                'source_index': 'chunks',
+                'source_kind': 'transcript_chunk',
+                'source_id': 'chunk-2',
+            },
+        ),
+    ]
+
+    await add_nodes_and_edges_bulk(
+        driver=graph_driver,
+        episodic_nodes=episodes,
+        episodic_edges=[],
+        entity_nodes=[],
+        entity_edges=[],
+        embedder=mock_embedder,
+    )
+
+    retrieved = await EpisodicNode.get_by_uuids(
+        graph_driver, [episode.uuid for episode in episodes]
+    )
+    retrieved_by_uuid = {episode.uuid: episode for episode in retrieved}
+
+    for episode in episodes:
+        await assert_episodic_node_equals(retrieved_by_uuid[episode.uuid], episode)
 
     await graph_driver.close()

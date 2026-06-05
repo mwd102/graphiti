@@ -27,7 +27,7 @@ from graphiti_core.models.nodes.node_db_queries import (
     EPISODIC_NODE_RETURN,
     get_episode_node_save_query,
 )
-from graphiti_core.nodes import EpisodicNode
+from graphiti_core.nodes import EpisodicNode, serialize_episode_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ class KuzuEpisodeNodeOperations(EpisodeNodeOperations):
             'created_at': node.created_at,
             'valid_at': node.valid_at,
             'source': node.source.value,
+            'episode_metadata': serialize_episode_metadata(node.episode_metadata),
         }
         if tx is not None:
             await tx.run(query, **params)

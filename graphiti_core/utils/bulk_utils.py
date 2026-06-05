@@ -40,7 +40,13 @@ from graphiti_core.models.nodes.node_db_queries import (
     get_entity_node_save_bulk_query,
     get_episode_node_save_bulk_query,
 )
-from graphiti_core.nodes import EntityNode, EpisodeType, EpisodicNode
+from graphiti_core.nodes import (
+    EntityNode,
+    EpisodeType,
+    EpisodicNode,
+    episode_metadata_property_map,
+    serialize_episode_metadata,
+)
 from graphiti_core.utils.datetime_utils import convert_datetimes_to_strings
 from graphiti_core.utils.maintenance.dedup_helpers import (
     DedupResolutionState,
@@ -105,6 +111,7 @@ class RawEpisode(BaseModel):
     source_description: str
     source: EpisodeType
     reference_time: datetime
+    episode_metadata: dict[str, Any] | None = Field(default=None)
 
 
 async def retrieve_previous_episodes_bulk(
@@ -158,8 +165,14 @@ async def add_nodes_and_edges_bulk_tx(
     driver: GraphDriver,
 ):
     episodes = [dict(episode) for episode in episodic_nodes]
-    for episode in episodes:
+    for episode, episodic_node in zip(episodes, episodic_nodes, strict=True):
         episode['source'] = str(episode['source'].value)
+        episode['episode_metadata'] = serialize_episode_metadata(
+            episodic_node.episode_metadata
+        )
+        episode['episode_metadata_properties'] = episode_metadata_property_map(
+            episodic_node.episode_metadata
+        )
         episode.pop('labels', None)
 
     nodes = []

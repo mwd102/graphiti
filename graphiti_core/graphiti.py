@@ -17,6 +17,7 @@ limitations under the License.
 import logging
 from datetime import datetime
 from time import time
+from typing import Any
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -986,6 +987,7 @@ class Graphiti:
         source: EpisodeType = EpisodeType.message,
         group_id: str | None = None,
         uuid: str | None = None,
+        episode_metadata: dict[str, Any] | None = None,
         update_communities: bool = False,
         entity_types: dict[str, type[BaseModel]] | None = None,
         excluded_entity_types: list[str] | None = None,
@@ -1018,6 +1020,9 @@ class Graphiti:
             An id for the graph partition the episode is a part of.
         uuid : str | None
             Optional uuid of the episode.
+        episode_metadata : dict[str, Any] | None
+            Optional customer-defined metadata to persist on the episode for provenance
+            and filtering.
         update_communities : bool
             Optional. Whether to update communities with new node information
         entity_types : dict[str, BaseModel] | None
@@ -1108,6 +1113,7 @@ class Graphiti:
                         source_description=source_description,
                         created_at=now,
                         valid_at=reference_time,
+                        episode_metadata=episode_metadata,
                     )
                 )
 
@@ -1328,6 +1334,7 @@ class Graphiti:
                         group_id=group_id,
                         created_at=now,
                         valid_at=episode.reference_time,
+                        episode_metadata=episode.episode_metadata,
                     )
                     for episode in bulk_episodes
                 ]

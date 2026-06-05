@@ -56,6 +56,7 @@ from graphiti_core.nodes import (
 from graphiti_core.search.search_filters import (
     SearchFilters,
     edge_search_filter_query_constructor,
+    episode_search_filter_query_constructor,
     node_search_filter_query_constructor,
 )
 
@@ -886,13 +887,13 @@ async def node_bfs_search(
 async def episode_fulltext_search(
     driver: GraphDriver,
     query: str,
-    _search_filter: SearchFilters,
+    search_filter: SearchFilters,
     group_ids: list[str] | None = None,
     limit=RELEVANT_SCHEMA_LIMIT,
 ) -> list[EpisodicNode]:
     if driver.search_interface:
         return await driver.search_interface.episode_fulltext_search(
-            driver, query, _search_filter, group_ids, limit
+            driver, query, search_filter, group_ids, limit
         )
 
     # BM25 search to get top episodes
@@ -900,11 +901,16 @@ async def episode_fulltext_search(
     if fuzzy_query == '':
         return []
 
-    filter_params: dict[str, Any] = {}
-    group_filter_query: LiteralString = ''
+    filter_queries, filter_params = episode_search_filter_query_constructor(
+        search_filter, driver.provider
+    )
     if group_ids is not None:
-        group_filter_query += '\nAND e.group_id IN $group_ids'
+        filter_queries.append('e.group_id IN $group_ids')
         filter_params['group_ids'] = group_ids
+
+    filter_query = ''
+    if filter_queries:
+        filter_query = ' AND ' + (' AND '.join(filter_queries))
 
     if driver.provider == GraphProvider.NEPTUNE:
         res = driver.run_aoss_query('episode_content', query, limit=limit)  # pyright: ignore reportAttributeAccessIssue
@@ -918,6 +924,9 @@ async def episode_fulltext_search(
                 UNWIND $ids as i
                 MATCH (e:Episodic)
                 WHERE e.uuid=i.uuid
+            """
+            + filter_query
+            + """
             RETURN
                     e.content AS content,
                     e.created_at AS created_at,
@@ -927,7 +936,8 @@ async def episode_fulltext_search(
                     e.group_id AS group_id,
                     e.source_description AS source_description,
                     e.source AS source,
-                    e.entity_edges AS entity_edges
+                    e.entity_edges AS entity_edges,
+                    e.episode_metadata AS episode_metadata
                 ORDER BY i.score DESC
                 LIMIT $limit
             """
@@ -949,7 +959,7 @@ async def episode_fulltext_search(
             MATCH (e:Episodic)
             WHERE e.uuid = episode.uuid
             """
-            + group_filter_query
+            + filter_query
             + """
             RETURN
             """

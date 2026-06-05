@@ -43,6 +43,7 @@ from graphiti_core.nodes import CommunityNode, EntityNode, EpisodicNode
 from graphiti_core.search.search_filters import (
     SearchFilters,
     edge_search_filter_query_constructor,
+    episode_search_filter_query_constructor,
     node_search_filter_query_constructor,
 )
 
@@ -408,11 +409,16 @@ class Neo4jSearchOperations(SearchOperations):
         if fuzzy_query == '':
             return []
 
-        filter_params: dict[str, Any] = {}
-        group_filter_query = ''
+        filter_queries, filter_params = episode_search_filter_query_constructor(
+            search_filter, GraphProvider.NEO4J
+        )
         if group_ids is not None:
-            group_filter_query += '\nAND e.group_id IN $group_ids'
+            filter_queries.append('e.group_id IN $group_ids')
             filter_params['group_ids'] = group_ids
+
+        filter_query = ''
+        if filter_queries:
+            filter_query = ' AND ' + (' AND '.join(filter_queries))
 
         cypher = (
             get_nodes_query('episode_content', '$query', limit=limit, provider=GraphProvider.NEO4J)
@@ -421,7 +427,7 @@ class Neo4jSearchOperations(SearchOperations):
             MATCH (e:Episodic)
             WHERE e.uuid = episode.uuid
             """
-            + group_filter_query
+            + filter_query
             + """
             RETURN
             """

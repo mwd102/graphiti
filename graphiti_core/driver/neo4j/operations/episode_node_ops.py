@@ -28,7 +28,11 @@ from graphiti_core.models.nodes.node_db_queries import (
     get_episode_node_save_bulk_query,
     get_episode_node_save_query,
 )
-from graphiti_core.nodes import EpisodicNode
+from graphiti_core.nodes import (
+    EpisodicNode,
+    episode_metadata_property_map,
+    serialize_episode_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +55,8 @@ class Neo4jEpisodeNodeOperations(EpisodeNodeOperations):
             'created_at': node.created_at,
             'valid_at': node.valid_at,
             'source': node.source.value,
+            'episode_metadata': serialize_episode_metadata(node.episode_metadata),
+            'episode_metadata_properties': episode_metadata_property_map(node.episode_metadata),
         }
         if tx is not None:
             await tx.run(query, **params)
@@ -70,6 +76,8 @@ class Neo4jEpisodeNodeOperations(EpisodeNodeOperations):
         for node in nodes:
             ep = dict(node)
             ep['source'] = str(ep['source'].value)
+            ep['episode_metadata'] = serialize_episode_metadata(node.episode_metadata)
+            ep['episode_metadata_properties'] = episode_metadata_property_map(node.episode_metadata)
             ep.pop('labels', None)
             episodes.append(ep)
 

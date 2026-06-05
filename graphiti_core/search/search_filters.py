@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import re
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -22,6 +23,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from graphiti_core.driver.driver import GraphProvider
 from graphiti_core.helpers import validate_node_labels
+from graphiti_core.nodes import EPISODE_METADATA_PROPERTY_PREFIX
+
+EPISODE_METADATA_FILTER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 
 class ComparisonOperator(Enum):
@@ -44,7 +48,7 @@ class DateFilter(BaseModel):
 
 class PropertyFilter(BaseModel):
     property_name: str = Field(description='Property name')
-    property_value: str | int | float | None = Field(
+    property_value: str | int | float | bool | None = Field(
         default=None, description='Value you want to match on for the property'
     )
     comparison_operator: ComparisonOperator = Field(
@@ -269,5 +273,49 @@ def edge_search_filter_query_constructor(
                 expired_at_filter += ' OR '
 
         filter_queries.append(expired_at_filter)
+
+    return filter_queries, filter_params
+
+
+def episode_search_filter_query_constructor(
+    filters: SearchFilters,
+    provider: GraphProvider,
+) -> tuple[list[str], dict[str, Any]]:
+    filter_queries: list[str] = []
+    filter_params: dict[str, Any] = {}
+
+    if provider != GraphProvider.NEO4J or filters.property_filters is None:
+        return filter_queries, filter_params
+
+    for i, property_filter in enumerate(filters.property_filters):
+        if not property_filter.property_name.startswith(EPISODE_METADATA_PROPERTY_PREFIX):
+            continue
+
+        metadata_key = property_filter.property_name.removeprefix(
+            EPISODE_METADATA_PROPERTY_PREFIX
+        )
+        if EPISODE_METADATA_FILTER_RE.fullmatch(metadata_key) is None:
+            raise ValueError(f'Invalid episode metadata filter key: {metadata_key}')
+
+        property_param = f'episode_metadata_property_{i}'
+        value_param = f'episode_metadata_value_{i}'
+        filter_params[property_param] = EPISODE_METADATA_PROPERTY_PREFIX + metadata_key
+
+        if property_filter.comparison_operator in [
+            ComparisonOperator.is_null,
+            ComparisonOperator.is_not_null,
+        ]:
+            filter_queries.append(
+                date_filter_query_constructor(
+                    f'e[${property_param}]', f'${value_param}', property_filter.comparison_operator
+                )
+            )
+        else:
+            filter_params[value_param] = property_filter.property_value
+            filter_queries.append(
+                date_filter_query_constructor(
+                    f'e[${property_param}]', f'${value_param}', property_filter.comparison_operator
+                )
+            )
 
     return filter_queries, filter_params

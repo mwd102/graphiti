@@ -253,6 +253,7 @@ async def assert_episodic_node_equals(retrieved: EpisodicNode, sample: EpisodicN
     assert retrieved.content == sample.content
     assert retrieved.valid_at == sample.valid_at
     assert set(retrieved.entity_edges) == set(sample.entity_edges)
+    assert retrieved.episode_metadata == sample.episode_metadata
 
 
 async def assert_entity_node_equals(
